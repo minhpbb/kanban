@@ -106,7 +106,9 @@ export class ProjectsService {
     return await this.projectRepository.save(project);
   }
 
-  async deleteProject(id: number, userId: number): Promise<{ message: string }> {
+  // ========== SOFT DELETE METHODS ==========
+
+  async softDeleteProject(id: number, userId: number): Promise<{ message: string }> {
     const project = await this.findProjectById(id, userId);
 
     // Only owner can delete project
@@ -114,11 +116,150 @@ export class ProjectsService {
       throw new ForbiddenException('Only project owner can delete project');
     }
 
-    // Soft delete - change status to deleted
-    project.status = 'deleted' as any;
-    await this.projectRepository.save(project);
+    // Use transaction to ensure data integrity
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    return { message: 'Project deleted successfully' };
+    try {
+      // 1. Soft delete project
+      project.status = 'deleted' as any;
+      await queryRunner.manager.save(project);
+
+      // 2. Soft delete all project members
+      await queryRunner.manager.update(
+        'project_members',
+        { projectId: id, isActive: true },
+        { isActive: false, leftAt: new Date() }
+      );
+
+      // 3. Soft delete all kanban boards
+      await queryRunner.manager.update(
+        'kanban_boards',
+        { projectId: id, isActive: true },
+        { isActive: false }
+      );
+
+      // 4. Soft delete all kanban columns (through boards)
+      const boards = await queryRunner.manager.find('kanban_boards', {
+        where: { projectId: id }
+      });
+      
+      if (boards.length > 0) {
+        const boardIds = boards.map(board => (board as any).id);
+        await queryRunner.manager.update(
+          'kanban_columns',
+          { boardId: boardIds as any, isActive: true },
+          { isActive: false }
+        );
+      }
+
+      // 5. Soft delete all tasks
+      await queryRunner.manager.update(
+        'tasks',
+        { projectId: id, deletedAt: null },
+        { deletedAt: new Date() }
+      );
+
+      // 6. Archive all project-related notifications
+      await queryRunner.manager.update(
+        'notifications',
+        { projectId: id, status: 'unread' },
+        { status: 'archived', archivedAt: new Date() }
+      );
+
+      await queryRunner.commitTransaction();
+      return { message: 'Project and all related data soft deleted successfully' };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // ========== HARD DELETE METHODS ==========
+
+  async hardDeleteProject(id: number, userId: number): Promise<{ message: string }> {
+    const project = await this.findProjectById(id, userId);
+
+    // Only owner can delete project
+    if (project.ownerId !== userId) {
+      throw new ForbiddenException('Only project owner can delete project');
+    }
+
+    // Use transaction to ensure data integrity
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Hard delete all project members
+      await queryRunner.manager.delete(
+        'project_members',
+        { projectId: id }
+      );
+
+      // 2. Hard delete all kanban boards (and their columns, tasks)
+      const boards = await queryRunner.manager.find('kanban_boards', {
+        where: { projectId: id }
+      });
+      
+      if (boards.length > 0) {
+        const boardIds = boards.map(board => (board as any).id);
+        
+        // Hard delete all tasks in all boards
+        await queryRunner.manager.delete(
+          'tasks',
+          { boardId: boardIds as any }
+        );
+        
+        // Hard delete all columns in all boards
+        await queryRunner.manager.delete(
+          'kanban_columns',
+          { boardId: boardIds as any }
+        );
+        
+        // Hard delete all boards
+        await queryRunner.manager.delete(
+          'kanban_boards',
+          { projectId: id }
+        );
+      }
+
+      // 3. Hard delete all tasks directly linked to project
+      await queryRunner.manager.delete(
+        'tasks',
+        { projectId: id }
+      );
+
+      // 4. Hard delete all project-related notifications
+      await queryRunner.manager.delete(
+        'notifications',
+        { projectId: id }
+      );
+
+      // 5. Hard delete the project itself
+      await queryRunner.manager.delete(
+        'projects',
+        { id: id }
+      );
+
+      await queryRunner.commitTransaction();
+      return { message: 'Project and all related data hard deleted successfully' };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // ========== LEGACY METHOD (for backward compatibility) ==========
+
+  async deleteProject(id: number, userId: number): Promise<{ message: string }> {
+    // Default to soft delete for backward compatibility
+    return this.softDeleteProject(id, userId);
   }
 
   async addProjectMember(projectId: number, memberUserId: number, role: ProjectRole, currentUserId: number): Promise<{ message: string }> {

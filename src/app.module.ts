@@ -7,6 +7,10 @@ import { AuthModule } from './auth/auth.module';
 import { databaseConfig } from './config/database.config';
 import { entities } from './entities/entities';
 import { ProjectsModule } from './projects/projects.module';
+import { TasksModule } from './tasks/tasks.module';
+import { KanbanModule } from './kanban/kanban.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { UsersModule } from './users/users.module';
 
 /**
  * Root Module of NestJS application
@@ -30,9 +34,12 @@ import { ProjectsModule } from './projects/projects.module';
       entities: entities, // Use entities array directly
     }),
     
-    // AuthModule: Module handling authentication and authorization
     AuthModule,
     ProjectsModule,
+    TasksModule,
+    KanbanModule,
+    NotificationsModule,
+    UsersModule,
   ],
   controllers: [AppController], // Root controller
   providers: [AppService], // Root service

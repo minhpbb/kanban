@@ -99,7 +99,9 @@ export class KanbanService {
     return await this.kanbanBoardRepository.save(board);
   }
 
-  async deleteBoard(boardId: number, userId: number): Promise<{ message: string }> {
+  // ========== SOFT DELETE METHODS ==========
+
+  async softDeleteBoard(boardId: number, userId: number): Promise<{ message: string }> {
     const board = await this.getBoardById(boardId, userId);
 
     // Check if user is project owner or admin
@@ -108,11 +110,170 @@ export class KanbanService {
       throw new ForbiddenException('Only project owner or admin can delete board');
     }
 
-    // Soft delete - deactivate board
-    board.isActive = false;
-    await this.kanbanBoardRepository.save(board);
+    // Use transaction to ensure data integrity
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    return { message: 'Board deleted successfully' };
+    try {
+      // 1. Soft delete board
+    board.isActive = false;
+      await queryRunner.manager.save(board);
+
+      // 2. Soft delete all columns in this board
+      await queryRunner.manager.update(
+        'kanban_columns',
+        { boardId: boardId, isActive: true },
+        { isActive: false }
+      );
+
+      // 3. Soft delete all tasks in this board
+      await queryRunner.manager.update(
+        'tasks',
+        { boardId: boardId, deletedAt: null },
+        { deletedAt: new Date() }
+      );
+
+      await queryRunner.commitTransaction();
+      return { message: 'Board and all related data soft deleted successfully' };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async softDeleteColumn(columnId: number, userId: number): Promise<{ message: string }> {
+    const column = await this.getColumnById(columnId, userId);
+    const board = await this.getBoardById(column.boardId, userId);
+
+    // Check if user can delete columns
+    const canDelete = await this.checkColumnPermission(board, 'delete');
+    if (!canDelete) {
+      throw new ForbiddenException('You do not have permission to delete columns');
+    }
+
+    // Use transaction to ensure data integrity
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Soft delete all tasks in this column
+      await queryRunner.manager.update(
+        'tasks',
+        { columnId: columnId, deletedAt: null },
+        { deletedAt: new Date() }
+      );
+
+      // 2. Soft delete the column
+      column.isActive = false;
+      await queryRunner.manager.save(column);
+
+      await queryRunner.commitTransaction();
+      return { message: 'Column and all related tasks soft deleted successfully' };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // ========== HARD DELETE METHODS ==========
+
+  async hardDeleteBoard(boardId: number, userId: number): Promise<{ message: string }> {
+    const board = await this.getBoardById(boardId, userId);
+
+    // Check if user is project owner or admin
+    const hasPermission = await this.checkProjectPermission(board.projectId, userId);
+    if (!hasPermission) {
+      throw new ForbiddenException('Only project owner or admin can delete board');
+    }
+
+    // Use transaction to ensure data integrity
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Hard delete all tasks in this board
+      await queryRunner.manager.delete(
+        'tasks',
+        { boardId: boardId }
+      );
+
+      // 2. Hard delete all columns in this board
+      await queryRunner.manager.delete(
+        'kanban_columns',
+        { boardId: boardId }
+      );
+
+      // 3. Hard delete the board itself
+      await queryRunner.manager.delete(
+        'kanban_boards',
+        { id: boardId }
+      );
+
+      await queryRunner.commitTransaction();
+      return { message: 'Board and all related data hard deleted successfully' };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async hardDeleteColumn(columnId: number, userId: number): Promise<{ message: string }> {
+    const column = await this.getColumnById(columnId, userId);
+    const board = await this.getBoardById(column.boardId, userId);
+
+    // Check if user can delete columns
+    const canDelete = await this.checkColumnPermission(board, 'delete');
+    if (!canDelete) {
+      throw new ForbiddenException('You do not have permission to delete columns');
+    }
+
+    // Use transaction to ensure data integrity
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Hard delete all tasks in this column
+      await queryRunner.manager.delete(
+        'tasks',
+        { columnId: columnId }
+      );
+
+      // 2. Hard delete the column
+      await queryRunner.manager.delete(
+        'kanban_columns',
+        { id: columnId }
+      );
+
+      await queryRunner.commitTransaction();
+      return { message: 'Column and all related tasks hard deleted successfully' };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // ========== LEGACY METHODS (for backward compatibility) ==========
+
+  async deleteBoard(boardId: number, userId: number): Promise<{ message: string }> {
+    // Default to soft delete for backward compatibility
+    return this.softDeleteBoard(boardId, userId);
+  }
+
+  async deleteColumn(columnId: number, userId: number): Promise<{ message: string }> {
+    // Default to hard delete for backward compatibility
+    return this.hardDeleteColumn(columnId, userId);
   }
 
   // ========== KANBAN COLUMN METHODS ==========
@@ -208,23 +369,6 @@ export class KanbanService {
     return await this.kanbanColumnRepository.save(column);
   }
 
-  async deleteColumn(columnId: number, userId: number): Promise<{ message: string }> {
-    const column = await this.getColumnById(columnId, userId);
-    const board = await this.getBoardById(column.boardId, userId);
-
-    // Check if user can delete columns
-    const canDelete = await this.checkColumnPermission(board, 'delete');
-    if (!canDelete) {
-      throw new ForbiddenException('You do not have permission to delete columns');
-    }
-
-    // TODO: Check if column has tasks and handle accordingly
-    // For now, we'll just deactivate the column
-    column.isActive = false;
-    await this.kanbanColumnRepository.save(column);
-
-    return { message: 'Column deleted successfully' };
-  }
 
   async reorderColumns(boardId: number, reorderDto: ReorderColumnsDto, userId: number): Promise<{ message: string }> {
     const board = await this.getBoardById(boardId, userId);

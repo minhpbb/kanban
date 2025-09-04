@@ -73,6 +73,9 @@ export class KanbanColumn {
     defaultAssignee?: string;
   };
 
+  @Column({ type: 'timestamp', nullable: true })
+  deletedAt: Date; // For soft delete
+
   @CreateDateColumn()
   createdAt: Date;
 

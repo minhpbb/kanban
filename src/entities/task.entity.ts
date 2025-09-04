@@ -82,6 +82,9 @@ export class Task {
     completedAt?: Date;
   };
 
+  @Column({ type: 'timestamp', nullable: true })
+  deletedAt: Date; // For soft delete
+
   @CreateDateColumn()
   createdAt: Date;
 

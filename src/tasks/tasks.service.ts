@@ -167,7 +167,9 @@ export class TasksService {
     return savedTask;
   }
 
-  async deleteTask(taskId: number, userId: number): Promise<{ message: string }> {
+  // ========== SOFT DELETE METHODS ==========
+
+  async softDeleteTask(taskId: number, userId: number): Promise<{ message: string }> {
     const task = await this.getTaskById(taskId, userId);
 
     // Check if user can delete task
@@ -176,8 +178,35 @@ export class TasksService {
       throw new ForbiddenException('You do not have permission to delete this task');
     }
 
+    // Soft delete - set deletedAt timestamp
+    task.deletedAt = new Date();
+    await this.taskRepository.save(task);
+    
+    return { message: 'Task soft deleted successfully' };
+  }
+
+  // ========== HARD DELETE METHODS ==========
+
+  async hardDeleteTask(taskId: number, userId: number): Promise<{ message: string }> {
+    const task = await this.getTaskById(taskId, userId);
+
+    // Check if user can delete task
+    const canDelete = await this.checkTaskPermission(task, userId, 'delete');
+    if (!canDelete) {
+      throw new ForbiddenException('You do not have permission to delete this task');
+    }
+
+    // Hard delete - remove task completely
     await this.taskRepository.remove(task);
-    return { message: 'Task deleted successfully' };
+    
+    return { message: 'Task hard deleted successfully' };
+  }
+
+  // ========== LEGACY METHOD (for backward compatibility) ==========
+
+  async deleteTask(taskId: number, userId: number): Promise<{ message: string }> {
+    // Default to hard delete for backward compatibility
+    return this.hardDeleteTask(taskId, userId);
   }
 
   // ========== DRAG & DROP METHODS ==========

@@ -11,8 +11,6 @@ A Kanban project management system built with NestJS, TypeORM, and MySQL. The sy
 - [Configuration](#-configuration)
 - [Development](#-development)
 - [Error Codes](#-error-codes)
-- [Security Features](#-security-features)
-- [File Management](#-file-management)
 
 ## ✨ Features
 
@@ -580,96 +578,6 @@ The API documentation is available through Swagger UI at:
 http://localhost:3001/api/docs
 ```
 
-### **Features:**
-- **Interactive API Testing**: Test endpoints directly from the browser
-- **Authentication Support**: JWT Bearer token and Cookie-based auth
-- **Request/Response Examples**: Detailed examples for each endpoint
-- **Error Response Documentation**: All possible error codes and messages
-- **Schema Validation**: Automatic validation of request/response schemas
-
-### **Authentication Methods:**
-- **JWT Bearer Token**: For API calls with Authorization header
-- **Cookie Authentication**: For browser-based requests (access_token, refresh_token)
-
-### **Available Endpoints:**
-
-#### **🔐 Authentication**
-- `POST /auth/login` - User login
-- `POST /auth/register` - User registration
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/logout` - User logout
-- `GET /auth/profile` - Get user profile
-- `PATCH /auth/profile` - Update user profile
-- `POST /auth/avatar` - Upload user avatar
-
-#### **🏗️ Projects**
-- `POST /projects` - Create project
-- `GET /projects` - Get user projects (paginated)
-- `GET /projects/:id` - Get project details
-- `PATCH /projects/:id` - Update project
-- `DELETE /projects/:id` - Delete project
-- `POST /projects/:id/members` - Add project member
-- `DELETE /projects/:id/members/:userId` - Remove project member
-- `GET /projects/:id/members` - Get project members
-
-#### **📊 Kanban Boards**
-- `POST /projects/:projectId/boards` - Create kanban board
-- `GET /projects/:projectId/boards` - Get project boards
-- `GET /boards/:id` - Get board details
-- `PATCH /boards/:id` - Update board
-- `DELETE /boards/:id` - Delete board
-
-#### **📋 Kanban Columns**
-- `POST /boards/:boardId/columns` - Create column
-- `GET /boards/:boardId/columns` - Get board columns
-- `GET /columns/:id` - Get column details
-- `PATCH /columns/:id` - Update column
-- `DELETE /columns/:id` - Delete column
-- `PATCH /boards/:boardId/columns/reorder` - Reorder columns
-
-#### **📝 Tasks**
-- `POST /tasks` - Create task
-- `GET /projects/:projectId/tasks` - Get project tasks
-- `GET /columns/:columnId/tasks` - Get column tasks
-- `GET /tasks/:id` - Get task details
-- `PATCH /tasks/:id` - Update task
-- `DELETE /tasks/:id` - Delete task
-- `PATCH /tasks/:id/move` - Move task between columns
-- `PATCH /columns/:columnId/tasks/reorder` - Reorder tasks in column
-- `POST /tasks/:id/comments` - Add task comment
-- `GET /tasks/:id/comments` - Get task comments
-
-#### **🔔 Notifications**
-- `GET /notifications/sse` - SSE connection for real-time notifications
-- `GET /notifications` - Get user notifications (paginated)
-- `PATCH /notifications/:id/read` - Mark notification as read
-- `PATCH /notifications/read-all` - Mark all notifications as read
-- `PATCH /notifications/:id/archive` - Archive notification
-
-## 📁 File Management
-
-### **File Upload Features**
-- **Avatar Support**: User and project profile pictures
-- **File Validation**: Size limit (5MB), allowed types (jpg, jpeg, png, gif, webp)
-- **Secure Storage**: Organized directory structure
-- **Unique Naming**: UUID-based filenames to prevent conflicts
-
-### **Storage Structure**
-```
-uploads/
-├── avatars/
-│   ├── users/                       # User avatars: user-uuid_abc123.jpg
-│   └── projects/                    # Project avatars: project-uuid_def456.png
-└── temp/                           # Temporary files for processing
-```
-
-### **File Upload Process**
-1. **Validation**: Check file size, type, and content
-2. **Processing**: Generate unique filename with UUID
-3. **Storage**: Save to appropriate directory based on entity type
-4. **Database**: Store file path in entity avatar field
-5. **Cleanup**: Automatic cleanup of old temporary files
-
 ## 🚀 Installation
 
 ### **Prerequisites**
@@ -793,16 +701,6 @@ yarn test:e2e          # Run e2e tests
 yarn test:cov          # Run tests with coverage
 ```
 
-### **Code Structure**
-```
-src/
-├── entities/           # Database entities (no relations)
-├── common/            # Shared utilities
-├── config/            # Configuration files
-├── auth/              # Authentication module
-└── database/          # Seeds and migrations
-```
-
 ### **Coding Standards**
 - **TypeScript**: Strict mode enabled
 - **ESLint**: Code quality rules
@@ -864,68 +762,5 @@ src/
 - `E998`: Service unavailable
 - `E997`: External service error
 
-## 🔒 Security Features
-
-### **Authentication Security**
-- **JWT Tokens**: Secure token-based authentication
-- **Refresh Tokens**: Automatic token rotation
-- **Cookie Security**: HTTP-only, secure, sameSite strict
-- **Password Hashing**: bcrypt with salt
-
-### **Authorization Security**
-- **RBAC System**: Role-based access control
-- **Permission Granularity**: Module-action level permissions
-- **Super Admin**: `all:all` permission for full access
-- **Project-level Security**: Member-based access control
-
-### **Data Security**
-- **Input Validation**: Comprehensive DTO validation
-- **SQL Injection Protection**: TypeORM parameterized queries
-- **XSS Protection**: Input sanitization
-- **CSRF Protection**: SameSite cookie policy
-
-### **File Security**
-- **File Type Validation**: Only allowed image types
-- **Size Limits**: Maximum file size restrictions
-- **Secure Storage**: Organized directory structure
-- **Access Control**: File access through authenticated endpoints
-
-### **API Security**
-- **CORS Protection**: Strict origin validation
-- **Request Validation**: Schema validation
-- **Error Handling**: Secure error messages
-
-## 🤝 Contributing
-
-### **Development Workflow**
-1. Fork repository
-2. Create feature branch
-3. Make changes with tests
-4. Submit pull request
-5. Code review process
-
-### **Code Quality**
-- **Tests**: Minimum 80% coverage
-- **Documentation**: JSDoc comments
-- **Linting**: ESLint compliance
-- **Formatting**: Prettier formatting
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-### **Issues**
-- GitHub Issues: [Create Issue](https://github.com/your-repo/issues)
-- Documentation: [Wiki](https://github.com/your-repo/wiki)
-
-### **Contact**
-- Email: support@kanban.com
-- Discord: [Join Server](https://discord.gg/kanban)
-
----
-
-**Made with ❤️ by Kanban Team**
 
 

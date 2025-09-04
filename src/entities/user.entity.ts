@@ -28,6 +28,9 @@ export class User {
   @Column({ default: false })
   isEmailVerified: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  deletedAt: Date; // For soft delete
+
   @CreateDateColumn()
   createdAt: Date;
 
