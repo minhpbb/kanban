@@ -5,7 +5,10 @@ A Kanban project management system built with NestJS, TypeORM, and MySQL. The sy
 ## 📋 Table of Contents
 
 - [Features](#-features)
+- [Architecture](#-architecture)
 - [Database Design](#-database-design)
+- [Task Templates & Recurring Tasks Workflow](#-task-templates--recurring-tasks-workflow)
+- [Project Member Management & Notification Flow](#-project-member-management--notification-flow)
 - [API Documentation](#-api-documentation)
 - [Installation](#-installation)
 - [Configuration](#-configuration)
@@ -45,6 +48,9 @@ A Kanban project management system built with NestJS, TypeORM, and MySQL. The sy
 - **Task Comments**: Comment system for tasks with notifications
 - **Custom Fields**: Flexible custom fields
 - **Time Tracking**: Track estimated and actual time
+- **Task Templates**: Reusable task templates for consistent task creation
+- **Recurring Tasks**: Automated task generation with flexible scheduling
+- **Task Scheduling**: Advanced scheduling system for recurring workflows
 
 ### 🔔 Real-time Notifications (SSE)
 - **Server-Sent Events**: Real-time notifications via SSE
@@ -94,6 +100,8 @@ src/
 - **Projects**: CRUD, member management, notifications
 - **Kanban**: Board & column management, dynamic workflows
 - **Tasks**: CRUD, drag & drop, comments, notifications
+- **Task Templates**: Reusable task templates with default values
+- **Recurring Tasks**: Automated task generation with scheduling
 - **Notifications**: SSE real-time notifications
 
 ### **File Storage Structure**
@@ -259,6 +267,55 @@ erDiagram
         timestamp updatedAt
     }
 
+    task_templates {
+        int id PK
+        int projectId FK
+        int createdById FK
+        varchar name
+        varchar title
+        text description
+        enum priority
+        int defaultColumnId FK
+        json defaultLabels
+        json defaultAssignees
+        int estimatedHours
+        json defaultCustomFields
+        text notes
+        boolean isActive
+        int usageCount
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    recurring_tasks {
+        int id PK
+        int projectId FK
+        int templateTaskId FK
+        enum recurrenceType
+        json recurrenceConfig
+        date nextDueDate
+        boolean isActive
+        int generatedCount
+        date lastGeneratedDate
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
+    task_schedules {
+        int id PK
+        int recurringTaskId FK
+        int generatedTaskId FK
+        date scheduledDate
+        date actualCreatedDate
+        enum status
+        json customOverrides
+        text notes
+        boolean isManuallyCreated
+        int createdByUserId FK
+        timestamp createdAt
+        timestamp updatedAt
+    }
+
     notifications {
         int id PK
         int userId FK
@@ -293,11 +350,45 @@ erDiagram
     kanban_columns ||--o{ tasks : "holds"
     users ||--o{ tasks : "assigned_to"
     users ||--o{ tasks : "creates"
+    projects ||--o{ task_templates : "contains"
+    users ||--o{ task_templates : "creates"
+    kanban_columns ||--o{ task_templates : "default_column"
+    projects ||--o{ recurring_tasks : "contains"
+    task_templates ||--o{ recurring_tasks : "based_on"
+    recurring_tasks ||--o{ task_schedules : "generates"
+    tasks ||--o{ task_schedules : "instance_of"
+    users ||--o{ task_schedules : "creates"
     users ||--o{ notifications : "receives"
     projects ||--o{ notifications : "triggers"
     tasks ||--o{ notifications : "triggers"
     users ||--o{ notifications : "sends"
 ```
+
+### **New Entities Added**
+
+#### **📋 Task Templates (`task_templates`)**
+- **Purpose**: Reusable task templates for consistent task creation
+- **Key Features**:
+  - Default values for title, description, priority, labels
+  - Default column assignment and estimated hours
+  - Usage tracking and template notes
+  - Project-specific templates
+
+#### **🔄 Recurring Tasks (`recurring_tasks`)**
+- **Purpose**: Automated task generation with flexible scheduling
+- **Key Features**:
+  - Multiple recurrence types: daily, weekly, monthly, yearly
+  - Flexible configuration (intervals, days of week, end dates)
+  - Generation tracking and next due date management
+  - Template-based task creation
+
+#### **📅 Task Schedules (`task_schedules`)**
+- **Purpose**: Track individual instances of recurring tasks
+- **Key Features**:
+  - Link between recurring tasks and actual task instances
+  - Custom overrides for specific instances
+  - Status tracking (pending, completed, cancelled)
+  - Manual vs automatic creation tracking
 
 ### **Why not use direct relationships (Foreign Keys)?**
 
@@ -331,6 +422,89 @@ if (!project) {
   throw new NotFoundException('Project not found');
 }
 ```
+
+## 🔄 **Task Templates & Recurring Tasks Workflow**
+
+### **📋 Task Template Creation & Usage Flow**
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant API as Backend API
+    participant DB as Database
+    participant T as Task Template Service
+
+    U->>API: POST /task-templates (create template)
+    Note over U,API: { name: "Daily Standup", title: "Daily Standup Meeting", priority: "MEDIUM" }
+    
+    API->>T: createTemplate()
+    T->>DB: Save task template
+    T->>U: Return template with ID
+    
+    Note over U: Template created: "Daily Standup"
+```
+
+### **🔄 Recurring Task Setup Flow**
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant API as Backend API
+    participant DB as Database
+    participant R as Recurring Task Service
+    participant S as Task Scheduler
+
+    U->>API: POST /recurring-tasks (create recurring task)
+    Note over U,API: { templateId: 123, recurrenceType: "DAILY", interval: 1 }
+    
+    API->>R: createRecurringTask()
+    R->>DB: Save recurring task configuration
+    R->>S: Schedule next task generation
+    S->>DB: Create task schedule entry
+    
+    API->>U: Return recurring task with next due date
+    
+    Note over S: Background job will generate tasks based on schedule
+```
+
+### **⚡ Automatic Task Generation Flow**
+```mermaid
+sequenceDiagram
+    participant S as Task Scheduler
+    participant DB as Database
+    participant T as Task Service
+    participant N as Notification Service
+
+    Note over S: Daily cron job runs
+    
+    S->>DB: Find recurring tasks due for generation
+    S->>DB: Get task template details
+    
+    loop For each due recurring task
+        S->>T: generateTaskFromTemplate()
+        T->>DB: Create new task instance
+        T->>DB: Update recurring task (generatedCount, nextDueDate)
+        T->>DB: Update task schedule status
+        
+        alt Task has assignee
+            T->>N: createTaskAssignedNotification()
+            N->>DB: Create notification
+        end
+    end
+    
+    Note over S: All scheduled tasks generated successfully
+```
+
+### **📊 Task Template & Recurring Task Relationships**
+
+| **Entity** | **Purpose** | **Key Relationships** |
+|------------|-------------|----------------------|
+| `task_templates` | Reusable task blueprints | → `projects` (belongs to) |
+| | | → `users` (created by) |
+| | | → `kanban_columns` (default column) |
+| `recurring_tasks` | Automated task generation | → `projects` (belongs to) |
+| | | → `task_templates` (based on) |
+| `task_schedules` | Individual task instances | → `recurring_tasks` (generated from) |
+| | | → `tasks` (actual task instance) |
+| | | → `users` (created by) |
 
 ## 🔄 **Project Member Management & Notification Flow**
 
@@ -600,11 +774,11 @@ yarn install
 Create `.env` file:
 ```env
 # Database Configuration
-DB_HOST=localhost
-DB_PORT=3306
-DB_USERNAME=root
-DB_PASSWORD=minh@dev1234
-DB_DATABASE=kanban_db
+DB_HOST=your_host
+DB_PORT=your_port
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+DB_DATABASE=your_database_name
 
 # JWT Configuration
 JWT_ACCESS_SECRET=your-super-secret-access-key-here
@@ -621,7 +795,7 @@ FRONTEND_URL=http://localhost:3000
 ### **4. Database Setup**
 ```bash
 # Create database
-mysql -u root -p -e "CREATE DATABASE kanban_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p -e "CREATE DATABASE your_database_name CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # Run seeds
 yarn seed
