@@ -364,32 +364,6 @@ erDiagram
     users ||--o{ notifications : "sends"
 ```
 
-### **New Entities Added**
-
-#### **📋 Task Templates (`task_templates`)**
-- **Purpose**: Reusable task templates for consistent task creation
-- **Key Features**:
-  - Default values for title, description, priority, labels
-  - Default column assignment and estimated hours
-  - Usage tracking and template notes
-  - Project-specific templates
-
-#### **🔄 Recurring Tasks (`recurring_tasks`)**
-- **Purpose**: Automated task generation with flexible scheduling
-- **Key Features**:
-  - Multiple recurrence types: daily, weekly, monthly, yearly
-  - Flexible configuration (intervals, days of week, end dates)
-  - Generation tracking and next due date management
-  - Template-based task creation
-
-#### **📅 Task Schedules (`task_schedules`)**
-- **Purpose**: Track individual instances of recurring tasks
-- **Key Features**:
-  - Link between recurring tasks and actual task instances
-  - Custom overrides for specific instances
-  - Status tracking (pending, completed, cancelled)
-  - Manual vs automatic creation tracking
-
 ### **Why not use direct relationships (Foreign Keys)?**
 
 #### **1. Design Reasons:**
