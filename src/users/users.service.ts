@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { User } from '../entities/user.entity';
+import { UpdateUserProfileDto, ChangePasswordDto } from './dto/user.dto';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
@@ -10,6 +12,67 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
   ) {}
+
+  // ========== PROFILE METHODS ==========
+
+  async getUserProfile(userId: number): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'username', 'email', 'fullName', 'avatar', 'createdAt', 'updatedAt']
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
+  async updateUserProfile(userId: number, updateUserProfileDto: UpdateUserProfileDto): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check if email is already taken by another user
+    if (updateUserProfileDto.email && updateUserProfileDto.email !== user.email) {
+      const existingUser = await this.userRepository.findOne({
+        where: { email: updateUserProfileDto.email }
+      });
+      if (existingUser) {
+        throw new BadRequestException('Email is already taken');
+      }
+    }
+
+    // Update user profile
+    Object.assign(user, updateUserProfileDto);
+    await this.userRepository.save(user);
+
+    // Return updated user without password
+    const { password, ...userWithoutPassword } = user;
+    return userWithoutPassword as User;
+  }
+
+  async changePassword(userId: number, changePasswordDto: ChangePasswordDto): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(changePasswordDto.currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
+
+    // Update password
+    await this.userRepository.update(userId, { password: hashedNewPassword });
+
+    return { message: 'Password changed successfully' };
+  }
 
   // ========== SOFT DELETE METHODS ==========
 

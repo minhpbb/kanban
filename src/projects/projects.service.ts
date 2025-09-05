@@ -6,6 +6,8 @@ import { ProjectMember, ProjectRole } from '../entities/project-member.entity';
 import { User } from '../entities/user.entity';
 import { CreateProjectDto, UpdateProjectDto } from './dto/project.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ActivityService } from '../common/services/activity.service';
+import { ActivityType } from '../entities/activity-log.entity';
 
 @Injectable()
 export class ProjectsService {
@@ -18,6 +20,7 @@ export class ProjectsService {
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly notificationsService: NotificationsService,
+    private readonly activityService: ActivityService,
   ) {}
 
   async createProject(createProjectDto: CreateProjectDto, ownerId: number): Promise<Project> {
@@ -44,6 +47,17 @@ export class ProjectsService {
       });
 
       await queryRunner.manager.save(projectMember);
+
+      // Log activity
+      await this.activityService.logActivity(
+        savedProject.id,
+        ownerId,
+        ActivityType.PROJECT_CREATED,
+        `Project "${savedProject.name}" was created`,
+        { projectId: savedProject.id },
+        'project',
+        savedProject.id,
+      );
 
       await queryRunner.commitTransaction();
       return savedProject;
@@ -102,8 +116,27 @@ export class ProjectsService {
     }
 
     // Update project
+    const oldName = project.name;
     Object.assign(project, updateProjectDto);
-    return await this.projectRepository.save(project);
+    const savedProject = await this.projectRepository.save(project);
+
+    // Log activity
+    await this.activityService.logActivity(
+      project.id,
+      userId,
+      ActivityType.PROJECT_UPDATED,
+      `Project "${oldName}" was updated`,
+      { 
+        projectId: project.id,
+        oldName,
+        newName: savedProject.name,
+        changes: updateProjectDto,
+      },
+      'project',
+      project.id,
+    );
+
+    return savedProject;
   }
 
   // ========== SOFT DELETE METHODS ==========
@@ -298,6 +331,23 @@ export class ProjectsService {
 
     await this.projectMemberRepository.save(projectMember);
 
+    // Log activity
+    await this.activityService.logActivity(
+      projectId,
+      currentUserId,
+      ActivityType.MEMBER_ADDED,
+      `User "${user.fullName}" was added to the project as ${role}`,
+      { 
+        projectId,
+        memberId: projectMember.id,
+        memberUserId,
+        role,
+        memberName: user.fullName,
+      },
+      'member',
+      projectMember.id,
+    );
+
     // Send notification to the added member
     await this.notificationsService.createProjectMemberAddedNotification(
       memberUserId,
@@ -389,5 +439,161 @@ export class ProjectsService {
     });
 
     return member?.role === ProjectRole.ADMIN;
+  }
+
+  async getProjectOverview(projectId: number, userId: number): Promise<any> {
+    await this.findProjectById(projectId, userId);
+
+    // Get project basic info
+    const project = await this.projectRepository.findOne({
+      where: { id: projectId },
+    });
+
+    // Get project statistics
+    const statistics = await this.getProjectStatistics(projectId, userId);
+
+    // Get recent activities
+    const recentActivities = await this.getProjectActivities(projectId, userId, 10);
+
+    // Get task distribution
+    const taskDistribution = await this.getTaskDistribution(projectId);
+
+    return {
+      project,
+      statistics,
+      recentActivities: recentActivities.activities,
+      taskDistribution,
+    };
+  }
+
+  async getProjectStatistics(projectId: number, userId: number, period?: string): Promise<any> {
+    await this.findProjectById(projectId, userId);
+
+    // Get task counts
+    const taskStats = await this.dataSource
+      .createQueryBuilder()
+      .select([
+        'COUNT(*) as totalTasks',
+        'SUM(CASE WHEN t.deletedAt IS NULL THEN 1 ELSE 0 END) as activeTasks',
+        'SUM(CASE WHEN t.dueDate < NOW() AND t.deletedAt IS NULL THEN 1 ELSE 0 END) as overdueTasks',
+      ])
+      .from('tasks', 't')
+      .where('t.projectId = :projectId', { projectId })
+      .getRawOne();
+
+    // Get member count
+    const memberCount = await this.projectMemberRepository.count({
+      where: { projectId, isActive: true },
+    });
+
+    // Get completion percentage (tasks in "Done" columns)
+    const completionStats = await this.dataSource
+      .createQueryBuilder()
+      .select([
+        'COUNT(*) as totalActiveTasks',
+        'SUM(CASE WHEN LOWER(kc.name) LIKE \'%done%\' OR LOWER(kc.name) LIKE \'%completed%\' THEN 1 ELSE 0 END) as completedTasks',
+      ])
+      .from('tasks', 't')
+      .leftJoin('kanban_columns', 'kc', 'kc.id = t.columnId')
+      .where('t.projectId = :projectId', { projectId })
+      .andWhere('t.deletedAt IS NULL')
+      .getRawOne();
+
+    const completionPercentage = completionStats.totalActiveTasks > 0 
+      ? Math.round((completionStats.completedTasks / completionStats.totalActiveTasks) * 100)
+      : 0;
+
+    // Get tasks by priority
+    const priorityStats = await this.dataSource
+      .createQueryBuilder()
+      .select(['t.priority', 'COUNT(*) as count'])
+      .from('tasks', 't')
+      .where('t.projectId = :projectId', { projectId })
+      .andWhere('t.deletedAt IS NULL')
+      .groupBy('t.priority')
+      .getRawMany();
+
+    const priorityDistribution = priorityStats.reduce((acc, stat) => {
+      acc[stat.priority] = parseInt(stat.count);
+      return acc;
+    }, {});
+
+    // Get top contributors (users with most completed tasks)
+    const topContributors = await this.dataSource
+      .createQueryBuilder()
+      .select([
+        't.assigneeId as userId',
+        'u.fullName as userName',
+        'u.avatar',
+        'COUNT(*) as tasksCompleted',
+      ])
+      .from('tasks', 't')
+      .leftJoin('users', 'u', 'u.id = t.assigneeId')
+      .leftJoin('kanban_columns', 'kc', 'kc.id = t.columnId')
+      .where('t.projectId = :projectId', { projectId })
+      .andWhere('t.deletedAt IS NULL')
+      .andWhere('t.assigneeId IS NOT NULL')
+      .andWhere('(LOWER(kc.name) LIKE \'%done%\' OR LOWER(kc.name) LIKE \'%completed%\')')
+      .groupBy('t.assigneeId, u.fullName, u.avatar')
+      .orderBy('tasksCompleted', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    return {
+      totalTasks: parseInt(taskStats.totalTasks) || 0,
+      completedTasks: parseInt(completionStats.completedTasks) || 0,
+      inProgressTasks: parseInt(taskStats.activeTasks) - parseInt(completionStats.completedTasks) || 0,
+      overdueTasks: parseInt(taskStats.overdueTasks) || 0,
+      totalMembers: memberCount,
+      completionPercentage,
+      priorityDistribution,
+      topContributors,
+    };
+  }
+
+  async getProjectActivities(projectId: number, userId: number, limit: number = 20, type?: string): Promise<any> {
+    await this.findProjectById(projectId, userId);
+
+    // Use ActivityService to get real activity logs
+    const activityType = type ? type as ActivityType : undefined;
+    return await this.activityService.getProjectActivities(projectId, limit, activityType);
+  }
+
+  private async getTaskDistribution(projectId: number): Promise<any> {
+    // Get tasks by column (status)
+    const statusStats = await this.dataSource
+      .createQueryBuilder()
+      .select(['kc.name as status', 'COUNT(*) as count'])
+      .from('tasks', 't')
+      .leftJoin('kanban_columns', 'kc', 'kc.id = t.columnId')
+      .where('t.projectId = :projectId', { projectId })
+      .andWhere('t.deletedAt IS NULL')
+      .groupBy('kc.name')
+      .getRawMany();
+
+    const byStatus = statusStats.reduce((acc, stat) => {
+      acc[stat.status] = parseInt(stat.count);
+      return acc;
+    }, {});
+
+    // Get tasks by priority
+    const priorityStats = await this.dataSource
+      .createQueryBuilder()
+      .select(['t.priority', 'COUNT(*) as count'])
+      .from('tasks', 't')
+      .where('t.projectId = :projectId', { projectId })
+      .andWhere('t.deletedAt IS NULL')
+      .groupBy('t.priority')
+      .getRawMany();
+
+    const byPriority = priorityStats.reduce((acc, stat) => {
+      acc[stat.priority] = parseInt(stat.count);
+      return acc;
+    }, {});
+
+    return {
+      byStatus,
+      byPriority,
+    };
   }
 }

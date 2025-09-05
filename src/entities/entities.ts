@@ -16,6 +16,7 @@ import { KanbanColumn } from './kanban-column.entity';
 import { RecurringTask } from './recurring-task.entity';
 import { TaskTemplate } from './task-template.entity';
 import { TaskSchedule } from './task-schedule.entity';
+import { Notification } from './notification.entity';
 
 // Export array of entity classes for TypeORM
 export const entities = [
@@ -34,4 +35,5 @@ export const entities = [
   RecurringTask,
   TaskTemplate,
   TaskSchedule,
+  Notification,
 ];

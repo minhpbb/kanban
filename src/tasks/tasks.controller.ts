@@ -10,7 +10,10 @@ import {
   Request,
   Query,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -106,10 +109,11 @@ export class TasksController {
   @ApiBadRequestResponse({ description: 'Project not found' })
   async getProjectTasks(
     @Param('projectId', ParseIntPipe) projectId: number,
-    @Query('boardId', new ParseIntPipe({ optional: true })) boardId: number,
     @Request() req,
+    @Query('boardId') boardId?: string,
   ) {
-    return this.tasksService.getProjectTasks(projectId, req.user.userId, boardId);
+    const boardIdNum = boardId ? parseInt(boardId, 10) : undefined;
+    return this.tasksService.getProjectTasks(projectId, req.user.userId, boardIdNum);
   }
 
   @Get('column/:columnId')
@@ -373,5 +377,93 @@ export class TasksController {
     @Request() req,
   ) {
     return this.tasksService.getTaskComments(taskId, req.user.userId);
+  }
+
+  // ========== FILE ATTACHMENT ENDPOINTS ==========
+
+  @Post(':id/attachments')
+  @RequirePermissions('task:update')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ 
+    summary: 'Upload task attachment', 
+    description: 'Upload a file attachment to a task' 
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Task ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'File to upload'
+        }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'File uploaded successfully',
+    schema: {
+      example: {
+        errCode: 'E000',
+        reason: 'Success',
+        result: 'SUCCESS',
+        data: {
+          attachment: {
+            filename: 'screenshot.png',
+            url: 'uploads/tasks/task-1_screenshot.png',
+            size: 1024000,
+            type: 'image/png'
+          },
+          message: 'File uploaded successfully'
+        },
+        timestamp: '2024-01-01T00:00:00.000Z'
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired token' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions or not authorized to upload files' })
+  @ApiBadRequestResponse({ description: 'Task not found or file validation error' })
+  async uploadTaskAttachment(
+    @Param('id', ParseIntPipe) taskId: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req,
+  ) {
+    return this.tasksService.uploadTaskAttachment(taskId, file, req.user.userId);
+  }
+
+  @Delete(':id/attachments/:attachmentId')
+  @RequirePermissions('task:update')
+  @ApiOperation({ 
+    summary: 'Delete task attachment', 
+    description: 'Delete a file attachment from a task' 
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Task ID' })
+  @ApiParam({ name: 'attachmentId', type: String, description: 'Attachment ID (filename)' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Attachment deleted successfully',
+    schema: {
+      example: {
+        errCode: 'E000',
+        reason: 'Success',
+        result: 'SUCCESS',
+        data: {
+          message: 'Attachment deleted successfully'
+        },
+        timestamp: '2024-01-01T00:00:00.000Z'
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired token' })
+  @ApiForbiddenResponse({ description: 'Insufficient permissions or not authorized to delete attachments' })
+  @ApiBadRequestResponse({ description: 'Task not found or attachment not found' })
+  async deleteTaskAttachment(
+    @Param('id', ParseIntPipe) taskId: number,
+    @Param('attachmentId') attachmentId: string,
+    @Request() req,
+  ) {
+    return this.tasksService.deleteTaskAttachment(taskId, attachmentId, req.user.userId);
   }
 }

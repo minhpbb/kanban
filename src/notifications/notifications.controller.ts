@@ -140,11 +140,13 @@ export class NotificationsController {
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   async getNotifications(
     @Request() req,
-    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
     @Query('status') status?: NotificationStatus,
   ) {
-    return this.notificationsService.getUserNotifications(req.user.userId, page, limit, status);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 20;
+    return this.notificationsService.getUserNotifications(req.user.userId, pageNum, limitNum, status);
   }
 
   @Patch(':id/read')

@@ -10,6 +10,9 @@ import { User } from '../entities/user.entity';
 import { CreateTaskDto, UpdateTaskDto, MoveTaskDto, ReorderTasksDto, AddCommentDto } from './dto/task.dto';
 import { TaskPriority } from '../entities/task.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { FileUploadService } from '../common/services/file-upload.service';
+import { ActivityService } from '../common/services/activity.service';
+import { ActivityType } from '../entities/activity-log.entity';
 
 @Injectable()
 export class TasksService {
@@ -28,6 +31,8 @@ export class TasksService {
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly notificationsService: NotificationsService,
+    private readonly fileUploadService: FileUploadService,
+    private readonly activityService: ActivityService,
   ) {}
 
   // ========== TASK CRUD METHODS ==========
@@ -59,6 +64,22 @@ export class TasksService {
       });
 
       const savedTask = await queryRunner.manager.save(task);
+
+      // Log activity
+      await this.activityService.logActivity(
+        createTaskDto.projectId,
+        userId,
+        ActivityType.TASK_CREATED,
+        `Task "${savedTask.title}" was created`,
+        { 
+          taskId: savedTask.id,
+          taskTitle: savedTask.title,
+          columnId: savedTask.columnId,
+          priority: savedTask.priority,
+        },
+        'task',
+        savedTask.id,
+      );
 
       await queryRunner.commitTransaction();
       return savedTask;
@@ -142,6 +163,23 @@ export class TasksService {
 
     Object.assign(task, updateTaskDto);
     const savedTask = await this.taskRepository.save(task);
+
+    // Log activity
+    await this.activityService.logActivity(
+      task.projectId,
+      userId,
+      ActivityType.TASK_UPDATED,
+      `Task "${task.title}" was updated`,
+      { 
+        taskId: task.id,
+        taskTitle: task.title,
+        changes: updateTaskDto,
+        oldAssigneeId,
+        newAssigneeId,
+      },
+      'task',
+      task.id,
+    );
 
     // Send notifications for assignee changes
     if (oldAssigneeId !== newAssigneeId) {
@@ -247,6 +285,23 @@ export class TasksService {
 
       await queryRunner.manager.save(task);
 
+      // Log activity
+      await this.activityService.logActivity(
+        task.projectId,
+        userId,
+        ActivityType.TASK_MOVED,
+        `Task "${task.title}" was moved to a different column`,
+        { 
+          taskId: task.id,
+          taskTitle: task.title,
+          oldColumnId: task.columnId,
+          newColumnId: moveTaskDto.targetColumnId,
+          newOrder: moveTaskDto.newOrder,
+        },
+        'task',
+        task.id,
+      );
+
       // Reorder other tasks in the target column if needed
       if (moveTaskDto.newOrder !== undefined) {
         await this.reorderTasksInColumnHelper(queryRunner, moveTaskDto.targetColumnId, taskId, moveTaskDto.newOrder);
@@ -323,6 +378,22 @@ export class TasksService {
 
     task.comments = comments;
     await this.taskRepository.save(task);
+
+    // Log activity
+    await this.activityService.logActivity(
+      task.projectId,
+      userId,
+      ActivityType.TASK_COMMENTED,
+      `Comment added to task "${task.title}"`,
+      { 
+        taskId: task.id,
+        taskTitle: task.title,
+        commentId: commentId,
+        commentContent: addCommentDto.content,
+      },
+      'task',
+      task.id,
+    );
 
     // Send notification to task assignee and creator (if different from commenter)
     const notifyUsers = [task.assigneeId, task.createdById].filter(
@@ -463,5 +534,95 @@ export class TasksService {
         order++;
       }
     }
+  }
+
+  // ========== FILE ATTACHMENT METHODS ==========
+
+  async uploadTaskAttachment(taskId: number, file: Express.Multer.File, userId: number): Promise<any> {
+    const task = await this.getTaskById(taskId, userId);
+
+    // Check if user can update task
+    const canUpdate = await this.checkTaskPermission(task, userId, 'update');
+    if (!canUpdate) {
+      throw new ForbiddenException('You do not have permission to upload files to this task');
+    }
+
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    // Upload file using FileUploadService
+    const filePath = await this.fileUploadService.uploadTempFile(file);
+
+    // Create attachment object
+    const attachment = {
+      filename: file.originalname,
+      url: filePath,
+      size: file.size,
+      type: file.mimetype,
+    };
+
+    // Add attachment to task
+    const attachments = task.attachments || [];
+    attachments.push(attachment);
+
+    // Update task with new attachment
+    task.attachments = attachments;
+    await this.taskRepository.save(task);
+
+    // Log activity
+    await this.activityService.logActivity(
+      task.projectId,
+      userId,
+      ActivityType.FILE_UPLOADED,
+      `File "${attachment.filename}" was uploaded to task "${task.title}"`,
+      { 
+        taskId: task.id,
+        taskTitle: task.title,
+        fileName: attachment.filename,
+        fileSize: attachment.size,
+        fileType: attachment.type,
+      },
+      'task',
+      task.id,
+    );
+
+    return {
+      attachment,
+      message: 'File uploaded successfully',
+    };
+  }
+
+  async deleteTaskAttachment(taskId: number, attachmentId: string, userId: number): Promise<{ message: string }> {
+    const task = await this.getTaskById(taskId, userId);
+
+    // Check if user can update task
+    const canUpdate = await this.checkTaskPermission(task, userId, 'update');
+    if (!canUpdate) {
+      throw new ForbiddenException('You do not have permission to delete files from this task');
+    }
+
+    const attachments = task.attachments || [];
+    const attachmentIndex = attachments.findIndex(att => att.filename === attachmentId);
+
+    if (attachmentIndex === -1) {
+      throw new NotFoundException('Attachment not found');
+    }
+
+    const attachment = attachments[attachmentIndex];
+
+    // Delete file from filesystem
+    try {
+      await this.fileUploadService.deleteAvatar(attachment.url);
+    } catch (error) {
+      console.warn('Failed to delete file from filesystem:', error);
+    }
+
+    // Remove attachment from task
+    attachments.splice(attachmentIndex, 1);
+    task.attachments = attachments;
+    await this.taskRepository.save(task);
+
+    return { message: 'Attachment deleted successfully' };
   }
 }

@@ -1,0 +1,492 @@
+### Kanban API Test File for REST Client Extension
+### Base URL - Change this to your server URL
+@baseUrl = http://localhost:3001
+
+### Variables - Update these after running requests
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInN1YiI6MiwiaWF0IjoxNzU2OTY5MTQ5LCJleHAiOjE3NTY5NzAwNDl9.82iHpxd2lOayqbANdrR71WVcO5bPohkGLzSEsS0Iz1M
+@memberToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjMsInN1YiI6MywiaWF0IjoxNzU2OTY5MjAzLCJleHAiOjE3NTY5NzAxMDN9.GLPMzZ0HXpqLuPJsxedlnJCaGVWWZejIt95JNqfjNSU
+@projectId = 1
+@taskId = 1
+@boardId = 1
+@columnId = 1
+
+### Example values (replace with actual values from responses):
+# @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# @projectId = 1
+# @boardId = 1
+# @taskId = 1
+
+### ========================================
+### 🔐 AUTHENTICATION
+### ========================================
+
+### Register Admin User
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "admintest",
+  "email": "admin@example.com",
+  "password": "password123",
+  "fullName": "Admin User"
+}
+
+### Register Member User
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "member1",
+  "email": "member1@example.com",
+  "password": "password123",
+  "fullName": "Member One"
+}
+
+### Login Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admintest",
+  "password": "password123"
+}
+
+### Login Member
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "member1",
+  "password": "password123"
+}
+
+### Refresh Token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+### Logout
+POST {{baseUrl}}/auth/logout
+Content-Type: application/json
+
+### ========================================
+### 👥 USERS
+### ========================================
+
+### Get Current User Profile
+GET {{baseUrl}}/users/profile
+Authorization: Bearer {{adminToken}}
+
+### Update User Profile
+PATCH {{baseUrl}}/users/profile
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Updated Admin Name",
+  "email": "updated@example.com"
+}
+
+### Change Password
+PATCH {{baseUrl}}/users/change-password
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "password123",
+  "newPassword": "newpassword123"
+}
+
+### Get All Users (Admin only)
+GET {{baseUrl}}/users
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 📁 PROJECTS
+### ========================================
+
+### Create Project
+POST {{baseUrl}}/projects
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Test Project",
+  "description": "Project for testing API"
+}
+
+### Get All Projects
+GET {{baseUrl}}/projects
+Authorization: Bearer {{adminToken}}
+
+### Get Project by ID
+GET {{baseUrl}}/projects/{{projectId}}
+Authorization: Bearer {{adminToken}}
+
+### Update Project
+PATCH {{baseUrl}}/projects/{{projectId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Project Name",
+  "description": "Updated description"
+}
+
+### Delete Project
+DELETE {{baseUrl}}/projects/{{projectId}}
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 👥 PROJECT MEMBERS
+### ========================================
+
+### Add Member to Project
+POST {{baseUrl}}/projects/{{projectId}}/members
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "userId": 3,
+  "role": "member"
+}
+
+### Get Project Members
+GET {{baseUrl}}/projects/{{projectId}}/members
+Authorization: Bearer {{adminToken}}
+
+### Update Member Role
+PATCH {{baseUrl}}/projects/{{projectId}}/members/2
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "admin"
+}
+
+### Remove Member from Project
+DELETE {{baseUrl}}/projects/{{projectId}}/members/2
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 📋 KANBAN BOARDS
+### ========================================
+
+### Create Board
+POST {{baseUrl}}/kanban/boards
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "projectId": {{projectId}},
+  "name": "Test Board",
+  "description": "Board for testing"
+}
+
+### Get Project Boards
+GET {{baseUrl}}/kanban/projects/{{projectId}}/boards
+Authorization: Bearer {{adminToken}}
+
+### Get Board by ID
+GET {{baseUrl}}/kanban/boards/{{boardId}}
+Authorization: Bearer {{adminToken}}
+
+### Update Board
+PATCH {{baseUrl}}/kanban/boards/{{boardId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Board Name",
+  "description": "Updated description"
+}
+
+### Delete Board
+DELETE {{baseUrl}}/kanban/boards/{{boardId}}
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 📊 KANBAN COLUMNS
+### ========================================
+
+### Create Column
+POST {{baseUrl}}/kanban/columns
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "boardId": {{boardId}},
+  "name": "To Do",
+  "description": "Tasks to be done",
+  "position": 0,
+  "wipLimit": 10
+}
+
+### Get Board Columns
+GET {{baseUrl}}/kanban/boards/{{boardId}}/columns
+Authorization: Bearer {{adminToken}}
+
+### Update Column
+PATCH {{baseUrl}}/kanban/columns/{{columnId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Column Name",
+  "wipLimit": 5
+}
+
+### Reorder Columns
+PATCH {{baseUrl}}/kanban/columns/reorder
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "columnIds": [1, 2, 3]
+}
+
+### Delete Column
+DELETE {{baseUrl}}/kanban/columns/{{columnId}}
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 📝 TASKS
+### ========================================
+
+### Create Task
+POST {{baseUrl}}/tasks
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "boardId": {{boardId}},
+  "columnId": {{columnId}},
+  "title": "Test Task",
+  "description": "Task for testing",
+  "priority": "medium",
+  "assigneeId": 2
+}
+
+### Get Board Tasks
+GET {{baseUrl}}/tasks/board/{{boardId}}
+Authorization: Bearer {{adminToken}}
+
+### Get Task by ID
+GET {{baseUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{adminToken}}
+
+### Update Task
+PATCH {{baseUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "title": "Updated Task Title",
+  "description": "Updated description",
+  "priority": "high"
+}
+
+### Move Task
+PATCH {{baseUrl}}/tasks/{{taskId}}/move
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "columnId": 2,
+  "position": 0
+}
+
+### Delete Task
+DELETE {{baseUrl}}/tasks/{{taskId}}
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 💬 TASK COMMENTS
+### ========================================
+
+### Add Comment to Task
+POST {{baseUrl}}/tasks/{{taskId}}/comments
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "content": "This is a test comment"
+}
+
+### Get Task Comments
+GET {{baseUrl}}/tasks/{{taskId}}/comments
+Authorization: Bearer {{adminToken}}
+
+### Update Comment
+PATCH {{baseUrl}}/tasks/{{taskId}}/comments/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "content": "Updated comment content"
+}
+
+### Delete Comment
+DELETE {{baseUrl}}/tasks/{{taskId}}/comments/1
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 🔔 NOTIFICATIONS
+### ========================================
+
+### Get Notifications
+GET {{baseUrl}}/notifications?page=1&limit=20
+Authorization: Bearer {{adminToken}}
+
+### Mark Notification as Read
+PATCH {{baseUrl}}/notifications/1/read
+Authorization: Bearer {{adminToken}}
+
+### Mark All Notifications as Read
+PATCH {{baseUrl}}/notifications/read-all
+Authorization: Bearer {{adminToken}}
+
+### Get Unread Count
+GET {{baseUrl}}/notifications/unread-count
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 📊 TASK TEMPLATES
+### ========================================
+
+### Create Task Template
+POST {{baseUrl}}/task-templates
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Bug Fix Template",
+  "description": "Template for bug fixes",
+  "title": "Fix Bug: Sample Bug Title",
+  "description": "Fix the following bug: Sample bug description",
+  "priority": "high",
+  "estimatedHours": 2
+}
+
+### Get All Task Templates
+GET {{baseUrl}}/task-templates
+Authorization: Bearer {{adminToken}}
+
+### Get Task Template by ID
+GET {{baseUrl}}/task-templates/1
+Authorization: Bearer {{adminToken}}
+
+### Update Task Template
+PATCH {{baseUrl}}/task-templates/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Template Name",
+  "estimatedHours": 3
+}
+
+### Delete Task Template
+DELETE {{baseUrl}}/task-templates/1
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 🔄 RECURRING TASKS
+### ========================================
+
+### Create Recurring Task
+POST {{baseUrl}}/recurring-tasks
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "templateId": 1,
+  "boardId": {{boardId}},
+  "columnId": {{columnId}},
+  "title": "Daily Standup",
+  "description": "Daily team standup meeting",
+  "priority": "medium",
+  "assigneeId": 2,
+  "recurrenceType": "daily",
+  "recurrenceValue": 1,
+  "startDate": "2024-01-01",
+  "endDate": "2024-12-31"
+}
+
+### Get All Recurring Tasks
+GET {{baseUrl}}/recurring-tasks
+Authorization: Bearer {{adminToken}}
+
+### Get Recurring Task by ID
+GET {{baseUrl}}/recurring-tasks/1
+Authorization: Bearer {{adminToken}}
+
+### Update Recurring Task
+PATCH {{baseUrl}}/recurring-tasks/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "title": "Updated Recurring Task",
+  "recurrenceValue": 2
+}
+
+### Delete Recurring Task
+DELETE {{baseUrl}}/recurring-tasks/1
+Authorization: Bearer {{adminToken}}
+
+### ========================================
+### 📅 TASK SCHEDULES
+### ========================================
+
+### Get Task Schedules
+GET {{baseUrl}}/task-schedules?recurringTaskId=1&page=1&limit=20
+Authorization: Bearer {{adminToken}}
+
+### Get Task Schedule by ID
+GET {{baseUrl}}/task-schedules/1
+Authorization: Bearer {{adminToken}}
+
+### Update Task Schedule
+PATCH {{baseUrl}}/task-schedules/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "status": "completed",
+  "actualHours": 1.5
+}
+
+### ========================================
+### 🧪 TESTING SEQUENCE
+### ========================================
+
+### Step 1: Register and Login
+# Run the register and login requests above first
+
+### Step 2: Create Project
+# Run the create project request
+
+### Step 3: Add Member
+# Run the add member request
+
+### Step 4: Create Board
+# Run the create board request
+
+### Step 5: Create Columns
+# Run the create column requests
+
+### Step 6: Create Tasks
+# Run the create task requests
+
+### Step 7: Test Notifications
+# Run the notification requests
+
+### ========================================
+### 🔍 DEBUGGING
+### ========================================
+
+### Check Server Health
+GET {{baseUrl}}/health
+
+### Get Server Info
+GET {{baseUrl}}/info

@@ -1,0 +1,624 @@
+# 🚀 KANBAN API - POSTMAN TEST COLLECTION
+# Base URL: http://localhost:3001
+# Authentication: JWT Bearer Token + Cookies
+
+# ========================================
+# 🔐 AUTHENTICATION ENDPOINTS
+# ========================================
+
+## 1. User Registration
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "email": "testuser@example.com",
+  "password": "password123",
+  "fullName": "Test User"
+}
+
+## 2. User Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+## 3. Refresh Token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+Cookie: refresh_token=your_refresh_token_here
+
+## 4. Get User Profile
+GET {{baseUrl}}/auth/profile
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 5. Update User Profile
+PUT {{baseUrl}}/auth/profile
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Updated Name",
+  "email": "updated@example.com"
+}
+
+## 6. Change Password
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "admin123",
+  "newPassword": "newpassword123"
+}
+
+## 7. Get User Permissions
+GET {{baseUrl}}/auth/permissions
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 8. Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 9. Logout All Devices
+POST {{baseUrl}}/auth/logout-all
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+# ========================================
+# 📁 PROJECT ENDPOINTS
+# ========================================
+
+## 10. Create Project
+POST {{baseUrl}}/projects
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "My Test Project",
+  "description": "A test project for API testing",
+  "startDate": "2024-01-01",
+  "endDate": "2024-12-31",
+  "settings": {
+    "theme": "blue",
+    "notifications": true
+  }
+}
+
+## 11. Get All Projects
+GET {{baseUrl}}/projects?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 12. Get Project by ID
+GET {{baseUrl}}/projects/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 13. Update Project
+PATCH {{baseUrl}}/projects/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Project Name",
+  "description": "Updated project description",
+  "settings": {
+    "theme": "green",
+    "notifications": false
+  }
+}
+
+## 14. Add Project Member
+POST {{baseUrl}}/projects/1/members
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "userId": 2,
+  "role": "member"
+}
+
+## 15. Get Project Members
+GET {{baseUrl}}/projects/1/members
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 16. Remove Project Member
+DELETE {{baseUrl}}/projects/1/members/2
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 17. Delete Project
+DELETE {{baseUrl}}/projects/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+# ========================================
+# 📊 KANBAN BOARD ENDPOINTS
+# ========================================
+
+## 18. Create Kanban Board
+POST {{baseUrl}}/kanban/projects/1/boards
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Sprint 1 Board",
+  "description": "Main development board for Sprint 1",
+  "settings": {
+    "defaultColumns": ["To Do", "In Progress", "Review", "Done"],
+    "allowColumnCreation": true,
+    "allowColumnDeletion": true,
+    "allowColumnReordering": true
+  }
+}
+
+## 19. Get Project Boards
+GET {{baseUrl}}/kanban/projects/1/boards
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 20. Get Board by ID
+GET {{baseUrl}}/kanban/boards/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 21. Update Board
+PATCH {{baseUrl}}/kanban/boards/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Board Name",
+  "description": "Updated board description",
+  "settings": {
+    "allowColumnCreation": false,
+    "allowColumnDeletion": false
+  }
+}
+
+## 22. Delete Board
+DELETE {{baseUrl}}/kanban/boards/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+# ========================================
+# 📋 KANBAN COLUMN ENDPOINTS
+# ========================================
+
+## 23. Create Kanban Column
+POST {{baseUrl}}/kanban/boards/1/columns
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Testing",
+  "description": "Tasks under testing",
+  "type": "custom",
+  "color": "orange",
+  "order": 3,
+  "maxTasks": 10,
+  "isWipLimit": true,
+  "wipSettings": {
+    "limit": 5,
+    "warningThreshold": 4,
+    "color": "#ff9800"
+  },
+  "rules": {
+    "allowTaskCreation": true,
+    "allowTaskMovement": true,
+    "requiredFields": ["title"],
+    "autoAssign": false
+  }
+}
+
+## 24. Get Board Columns
+GET {{baseUrl}}/kanban/boards/1/columns
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 25. Get Column by ID
+GET {{baseUrl}}/kanban/columns/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 26. Update Column
+PATCH {{baseUrl}}/kanban/columns/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Column Name",
+  "description": "Updated column description",
+  "color": "purple",
+  "maxTasks": 15,
+  "wipSettings": {
+    "limit": 8,
+    "warningThreshold": 6,
+    "color": "#9c27b0"
+  }
+}
+
+## 27. Reorder Columns
+PATCH {{baseUrl}}/kanban/boards/1/columns/reorder
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "columnIds": [3, 1, 2, 4]
+}
+
+## 28. Delete Column
+DELETE {{baseUrl}}/kanban/columns/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+# ========================================
+# 📝 TASK ENDPOINTS
+# ========================================
+
+## 29. Create Task
+POST {{baseUrl}}/tasks
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "Fix login bug",
+  "description": "User cannot login with valid credentials. Need to investigate and fix the authentication issue.",
+  "projectId": 1,
+  "boardId": 1,
+  "columnId": 1,
+  "priority": "high",
+  "assigneeId": 2,
+  "dueDate": "2024-01-15",
+  "labels": ["bug", "urgent", "authentication"],
+  "attachments": [
+    {
+      "name": "screenshot.png",
+      "url": "uploads/attachments/screenshot_123.png",
+      "size": 1024000,
+      "type": "image/png"
+    }
+  ],
+  "customFields": {
+    "storyPoints": 5,
+    "epic": "Authentication",
+    "sprint": "Sprint 1"
+  },
+  "timeTracking": {
+    "estimatedHours": 8,
+    "actualHours": 0
+  }
+}
+
+## 30. Get Project Tasks
+GET {{baseUrl}}/tasks/project/1?boardId=1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 31. Get Column Tasks
+GET {{baseUrl}}/tasks/column/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 32. Get Task by ID
+GET {{baseUrl}}/tasks/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 33. Update Task
+PATCH {{baseUrl}}/tasks/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "title": "Updated Task Title",
+  "description": "Updated task description",
+  "priority": "medium",
+  "assigneeId": 3,
+  "dueDate": "2024-01-20",
+  "labels": ["bug", "fixed"],
+  "timeTracking": {
+    "estimatedHours": 6,
+    "actualHours": 4
+  }
+}
+
+## 34. Move Task to Different Column
+PATCH {{baseUrl}}/tasks/1/move
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "targetColumnId": 2,
+  "newOrder": 0
+}
+
+## 35. Reorder Tasks in Column
+PATCH {{baseUrl}}/tasks/column/1/reorder
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "taskIds": [3, 1, 2, 4]
+}
+
+## 36. Add Comment to Task
+POST {{baseUrl}}/tasks/1/comments
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Content-Type: application/json
+
+{
+  "content": "This task is ready for review. All tests are passing."
+}
+
+## 37. Get Task Comments
+GET {{baseUrl}}/tasks/1/comments
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 38. Delete Task
+DELETE {{baseUrl}}/tasks/1
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+# ========================================
+# 🔔 NOTIFICATION ENDPOINTS
+# ========================================
+
+## 39. Get User Notifications
+GET {{baseUrl}}/notifications?page=1&limit=20&status=unread
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 40. Mark Notification as Read
+PATCH {{baseUrl}}/notifications/1/read
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 41. Mark All Notifications as Read
+PATCH {{baseUrl}}/notifications/read-all
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 42. Archive Notification
+PATCH {{baseUrl}}/notifications/1/archive
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+
+## 43. SSE Connection (Real-time Notifications)
+GET {{baseUrl}}/notifications/sse
+Authorization: Bearer {{accessToken}}
+Cookie: access_token={{accessToken}}
+Accept: text/event-stream
+
+# ========================================
+# 🧪 TEST DATA SETUP
+# ========================================
+
+## Test Users for Member Management
+### User 2
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "member1",
+  "email": "member1@example.com",
+  "password": "password123",
+  "fullName": "Member One"
+}
+
+### User 3
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "member2",
+  "email": "member2@example.com",
+  "password": "password123",
+  "fullName": "Member Two"
+}
+
+# ========================================
+# 🔔 NOTIFICATION TESTING WORKFLOW
+# ========================================
+
+## Notification Test Scenario: Add Member to Project
+
+### Step 1: User A (Admin) creates project
+POST {{baseUrl}}/projects
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Notification Test Project",
+  "description": "Project for testing notifications"
+}
+
+### Step 2: User B (Member) login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "member1",
+  "password": "password123"
+}
+
+### Step 3: User B setup SSE connection (for real-time notifications)
+GET {{baseUrl}}/notifications/sse
+Authorization: Bearer {{memberToken}}
+Accept: text/event-stream
+
+### Step 4: User A adds User B to project (triggers notification)
+POST {{baseUrl}}/projects/1/members
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "userId": 2,
+  "role": "member"
+}
+
+### Step 5: User B checks notifications (should see new notification)
+GET {{baseUrl}}/notifications?page=1&limit=20
+Authorization: Bearer {{memberToken}}
+
+### Step 6: User B marks notification as read
+PATCH {{baseUrl}}/notifications/1/read
+Authorization: Bearer {{memberToken}}
+
+## Other Notification Triggers:
+
+### Task Assignment Notification
+PATCH {{baseUrl}}/tasks/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "assigneeId": 2
+}
+
+### Task Comment Notification
+POST {{baseUrl}}/tasks/1/comments
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+
+{
+  "content": "This task looks good!"
+}
+
+# ========================================
+# 📋 TESTING SEQUENCE (Recommended Order)
+# ========================================
+
+# 1. Authentication Flow
+# - Register new users (Test Users)
+# - Login with admin account
+# - Get profile and permissions
+# - Test token refresh
+
+# 2. Project Management
+# - Create project
+# - Get all projects
+# - Update project
+# - Add members to project
+# - Get project members
+
+# 3. Kanban Board Setup
+# - Create kanban board
+# - Get project boards
+# - Create columns
+# - Get board columns
+# - Reorder columns
+
+# 4. Task Management
+# - Create tasks
+# - Get project/column tasks
+# - Update tasks
+# - Move tasks between columns
+# - Add comments to tasks
+# - Reorder tasks in columns
+
+# 5. Notifications
+# - Get notifications
+# - Mark notifications as read
+# - Test SSE connection
+
+# 6. Cleanup (Delete operations)
+# - Delete tasks
+# - Delete columns
+# - Delete boards
+# - Remove project members
+# - Delete projects
+
+# ========================================
+# 🔧 POSTMAN ENVIRONMENT VARIABLES
+# ========================================
+
+# Create these variables in Postman:
+# baseUrl: http://localhost:3001
+# accessToken: (will be set after login)
+# refreshToken: (will be set after login)
+# projectId: (will be set after creating project)
+# boardId: (will be set after creating board)
+# columnId: (will be set after creating column)
+# taskId: (will be set after creating task)
+# notificationId: (will be set after getting notifications)
+
+# ========================================
+# 📝 NOTES
+# ========================================
+
+# 1. Authentication:
+# - Login returns JWT tokens in cookies
+# - Use Bearer token in Authorization header
+# - Include cookies in requests for full authentication
+
+# 2. Permissions:
+# - Admin user has 'all:all' permission
+# - Regular users need specific permissions for each endpoint
+# - Check permissions endpoint to see user's permissions
+
+# 3. Error Handling:
+# - All responses follow standard format with errCode, reason, result
+# - Check error codes in README.md for details
+# - 401: Unauthorized (invalid/expired token)
+# - 403: Forbidden (insufficient permissions)
+# - 404: Not found
+# - 400: Bad request (validation error)
+
+# 4. Real-time Features:
+# - SSE endpoint provides real-time notifications
+# - Test with multiple users to see notifications in action
+# - Notifications are triggered by task assignments, comments, etc.
+
+# 5. File Uploads:
+# - Avatar uploads are handled separately
+# - Use multipart/form-data for file uploads
+# - Files are stored in uploads/ directory
+
+# 6. Database:
+# - Run 'yarn seed' to populate initial data
+# - Admin user: username='admin', password='admin123'
+# - All IDs are auto-incrementing integers
+
+# ========================================
+# 🚀 QUICK START COMMANDS
+# ========================================
+
+# 1. Start the application:
+# cd be && yarn start:dev
+
+# 2. Run database seeds:
+# cd be && yarn seed
+
+# 3. Access Swagger documentation:
+# http://localhost:3001/api/docs
+
+# 4. Test with Postman:
+# - Import this collection
+# - Set up environment variables
+# - Start with authentication endpoints
+# - Follow the testing sequence above
