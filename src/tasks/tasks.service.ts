@@ -81,6 +81,15 @@ export class TasksService {
         savedTask.id,
       );
 
+      // Send notification to assignee if task is assigned to someone
+      if (savedTask.assigneeId && savedTask.assigneeId !== userId) {
+        await this.notificationsService.createTaskAssignedNotification(
+          savedTask.assigneeId,
+          savedTask.id,
+          userId,
+        );
+      }
+
       await queryRunner.commitTransaction();
       return savedTask;
     } catch (error) {
@@ -202,6 +211,15 @@ export class TasksService {
       }
     }
 
+    // Send notification to assignee if task was updated (but not assigned to them)
+    if (savedTask.assigneeId && savedTask.assigneeId !== userId && oldAssigneeId === newAssigneeId) {
+      await this.notificationsService.createTaskUpdatedNotification(
+        savedTask.assigneeId,
+        task.id,
+        userId,
+      );
+    }
+
     return savedTask;
   }
 
@@ -219,6 +237,31 @@ export class TasksService {
     // Soft delete - set deletedAt timestamp
     task.deletedAt = new Date();
     await this.taskRepository.save(task);
+
+    // Log activity
+    await this.activityService.logActivity(
+      task.projectId,
+      userId,
+      ActivityType.TASK_DELETED,
+      `Task "${task.title}" was deleted`,
+      { 
+        taskId: task.id,
+        taskTitle: task.title,
+        columnId: task.columnId,
+        priority: task.priority,
+      },
+      'task',
+      task.id,
+    );
+
+    // Send notification to assignee if task was assigned to someone
+    if (task.assigneeId && task.assigneeId !== userId) {
+      await this.notificationsService.createTaskDeletedNotification(
+        task.assigneeId,
+        task.id,
+        userId,
+      );
+    }
     
     return { message: 'Task soft deleted successfully' };
   }
@@ -301,6 +344,15 @@ export class TasksService {
         'task',
         task.id,
       );
+
+      // Send notification to assignee if task was moved
+      if (task.assigneeId && task.assigneeId !== userId) {
+        await this.notificationsService.createTaskMovedNotification(
+          task.assigneeId,
+          task.id,
+          userId,
+        );
+      }
 
       // Reorder other tasks in the target column if needed
       if (moveTaskDto.newOrder !== undefined) {
@@ -586,6 +638,16 @@ export class TasksService {
       'task',
       task.id,
     );
+
+    // Send notification to assignee if file was uploaded
+    if (task.assigneeId && task.assigneeId !== userId) {
+      await this.notificationsService.createTaskFileUploadedNotification(
+        task.assigneeId,
+        task.id,
+        userId,
+        attachment.filename,
+      );
+    }
 
     return {
       attachment,

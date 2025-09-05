@@ -10,6 +10,8 @@ export enum NotificationType {
   TASK_COMMENTED = 'task_commented',
   TASK_CREATED = 'task_created',
   TASK_UPDATED = 'task_updated',
+  TASK_DELETED = 'task_deleted',
+  TASK_FILE_UPLOADED = 'task_file_uploaded',
   TASK_DUE_SOON = 'task_due_soon',
   TASK_OVERDUE = 'task_overdue',
 }

@@ -205,8 +205,6 @@ export class NotificationsService {
     userId: number,
     taskId: number,
     fromUserId: number,
-    oldColumnName: string,
-    newColumnName: string,
   ): Promise<Notification> {
     const task = await this.taskRepository.findOne({ where: { id: taskId } });
     const fromUser = await this.userRepository.findOne({ where: { id: fromUserId } });
@@ -219,14 +217,12 @@ export class NotificationsService {
       fromUserId,
       type: NotificationType.TASK_MOVED,
       title: 'Task Moved',
-      message: `${fromUser?.fullName || fromUser?.username} moved task "${task?.title}" from "${oldColumnName}" to "${newColumnName}"`,
+      message: `${fromUser?.fullName || fromUser?.username} moved task "${task?.title}" in project "${project?.name}"`,
       metadata: {
         projectName: project?.name,
         taskTitle: task?.title,
         fromUserName: fromUser?.fullName || fromUser?.username,
         fromUserAvatar: fromUser?.avatar,
-        oldColumnName,
-        columnName: newColumnName,
       },
     });
   }
@@ -253,6 +249,86 @@ export class NotificationsService {
         taskTitle: task?.title,
         fromUserName: fromUser?.fullName || fromUser?.username,
         fromUserAvatar: fromUser?.avatar,
+      },
+    });
+  }
+
+  async createTaskUpdatedNotification(
+    userId: number,
+    taskId: number,
+    fromUserId: number,
+  ): Promise<Notification> {
+    const task = await this.taskRepository.findOne({ where: { id: taskId } });
+    const fromUser = await this.userRepository.findOne({ where: { id: fromUserId } });
+    const project = await this.projectRepository.findOne({ where: { id: task?.projectId } });
+
+    return this.createNotification({
+      userId,
+      projectId: task?.projectId,
+      taskId,
+      fromUserId,
+      type: NotificationType.TASK_UPDATED,
+      title: 'Task Updated',
+      message: `${fromUser?.fullName || fromUser?.username} updated task "${task?.title}" in project "${project?.name}"`,
+      metadata: {
+        projectName: project?.name,
+        taskTitle: task?.title,
+        fromUserName: fromUser?.fullName || fromUser?.username,
+        fromUserAvatar: fromUser?.avatar,
+      },
+    });
+  }
+
+  async createTaskDeletedNotification(
+    userId: number,
+    taskId: number,
+    fromUserId: number,
+  ): Promise<Notification> {
+    const task = await this.taskRepository.findOne({ where: { id: taskId } });
+    const fromUser = await this.userRepository.findOne({ where: { id: fromUserId } });
+    const project = await this.projectRepository.findOne({ where: { id: task?.projectId } });
+
+    return this.createNotification({
+      userId,
+      projectId: task?.projectId,
+      taskId,
+      fromUserId,
+      type: NotificationType.TASK_DELETED,
+      title: 'Task Deleted',
+      message: `${fromUser?.fullName || fromUser?.username} deleted task "${task?.title}" in project "${project?.name}"`,
+      metadata: {
+        projectName: project?.name,
+        taskTitle: task?.title,
+        fromUserName: fromUser?.fullName || fromUser?.username,
+        fromUserAvatar: fromUser?.avatar,
+      },
+    });
+  }
+
+  async createTaskFileUploadedNotification(
+    userId: number,
+    taskId: number,
+    fromUserId: number,
+    fileName: string,
+  ): Promise<Notification> {
+    const task = await this.taskRepository.findOne({ where: { id: taskId } });
+    const fromUser = await this.userRepository.findOne({ where: { id: fromUserId } });
+    const project = await this.projectRepository.findOne({ where: { id: task?.projectId } });
+
+    return this.createNotification({
+      userId,
+      projectId: task?.projectId,
+      taskId,
+      fromUserId,
+      type: NotificationType.TASK_FILE_UPLOADED,
+      title: 'File Uploaded',
+      message: `${fromUser?.fullName || fromUser?.username} uploaded file "${fileName}" to task "${task?.title}" in project "${project?.name}"`,
+      metadata: {
+        projectName: project?.name,
+        taskTitle: task?.title,
+        fromUserName: fromUser?.fullName || fromUser?.username,
+        fromUserAvatar: fromUser?.avatar,
+        fileName,
       },
     });
   }
